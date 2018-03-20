@@ -10,23 +10,29 @@ from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
 from apiclient.http import MediaIoBaseDownload
+import click
+
+@click.group()
+def cli():
+    pass
+    #click.echo("Hello World!")
 
 # important:
 # have code like this
-# enable API rights like
-# have google api client install
+# enable API rights like in tutorial
+# have google api client installed
 # python2.7 etc.
 
 # set data names
-docs = ['accounts', 'timeline', 'masters', 'finance']
+def_docs = ['accounts', 'timeline', 'masters', 'finance']
 # set pagesize
 N = 10
 
-try:
-    import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-    flags = None
+# try:
+#     import argparse
+#     flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
+# except ImportError:
+#     flags = None
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/drive-python-quickstart.json
@@ -63,12 +69,20 @@ def get_credentials():
         print('Storing credentials to ' + credential_path)
     return credentials
 
-def main():
-    """Shows basic usage of the Google Drive API.
-
-    Creates a Google Drive API service object and outputs the names and IDs
-    for up to 10 files.
+@click.command()
+@click.option('--docs','-d', multiple=True, default=def_docs)
+def fetch(docs):
+#def main():
     """
+    Allows for fetching of Google Drive docs
+    """
+    if docs != def_docs:
+        click.echo("Fetching following docs:")
+        click.echo(docs)
+    else:
+        click.echo("Fetching default docs.")
+
+
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('drive', 'v3', http=http)
@@ -93,7 +107,14 @@ def main():
 					status, done = downloader.next_chunk()
 					print("Download %d%%." % int(status.progress() * 100))
 
+@click.command()
+def update():
+    'TODO: a function for updating'
+    click.echo('Finished updating.')
+
+cli.add_command(fetch)
+cli.add_command(update)
 
 if __name__ == '__main__':
-    main()
+    cli()
 
