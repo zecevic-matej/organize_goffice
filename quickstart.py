@@ -13,9 +13,14 @@ from apiclient.http import MediaIoBaseDownload
 import click
 
 @click.group()
-def cli():
+@click.pass_context
+def cli(ctx):
+    ctx.obj = {}
+    credentials = get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('drive', 'v3', http=http)
+    ctx.obj['SERVICE'] = service
     pass
-    #click.echo("Hello World!")
 
 # important:
 # have code like this
@@ -69,23 +74,20 @@ def get_credentials():
         print('Storing credentials to ' + credential_path)
     return credentials
 
-@click.command()
-@click.option('--docs','-d', multiple=True, default=def_docs)
-def fetch(docs):
+@click.command(short_help='fetch Google Drive data')
+@click.option('--docs','-d', multiple=True, default=def_docs, help='Each argument represents the name of a specific document to be fetched.')
+@click.pass_context
+def fetch(ctx, docs):
 #def main():
-    """
-    Allows for fetching of Google Drive docs
-    """
+    'Fetch a subset or all of the set default documents from Google Drive.'
     if docs != def_docs:
         click.echo("Fetching following docs:")
         click.echo(docs)
     else:
         click.echo("Fetching default docs.")
 
+    service = ctx.obj['SERVICE']
 
-    credentials = get_credentials()
-    http = credentials.authorize(httplib2.Http())
-    service = discovery.build('drive', 'v3', http=http)
 
     results = service.files().list(
         pageSize=N,fields="nextPageToken, files(id, name)").execute()
@@ -107,13 +109,34 @@ def fetch(docs):
 					status, done = downloader.next_chunk()
 					print("Download %d%%." % int(status.progress() * 100))
 
-@click.command()
-def update():
-    'TODO: a function for updating'
-    click.echo('Finished updating.')
+@click.command(short_help='list Google Drive data')
+@click.option('--limit','-L', type=int, help='Limit to number of files that should be displayed.')
+@click.option('--type', '-T', is_flag=True, help='Option that limits view to only documents and spreadsheets.')
+@click.pass_context
+def list(ctx, limit, type):
+    'List a subset or all of the available Google Drive files.'
+    click.echo('LISTING GOOGLE DRIVE DOCUMENTS.')
+    service = ctx.obj['SERVICE']
+    if limit:
+        results = service.files().list(pageSize=limit, fields="nextPageToken, files(id, name, mimeType)").execute()
+    else:
+        results = service.files().list(fields="nextPageToken, files(id, name, mimeType)").execute()
+    items = results.get("files", [])
+    if not items:
+        print("No files found.")
+    else:
+        print("Files:")
+        for item in items:
+            if type and ('document' in item['mimeType'] or 'spreadsheet' in item['mimeType']):
+                print('{0} ({1}) [{2}]'.format(item['name'], item['id'], item['mimeType']))
+            elif type:
+                continue
+            else:
+                print('{0} ({1}) [{2}]'.format(item['name'], item['id'], item['mimeType']))
+
 
 cli.add_command(fetch)
-cli.add_command(update)
+cli.add_command(list)
 
 if __name__ == '__main__':
     cli()

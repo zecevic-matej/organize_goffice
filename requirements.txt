@@ -1,0 +1,4 @@
+setuptools==3.3
+httplib2==0.10.3
+click==6.7
+google_api_python_client==1.6.5
